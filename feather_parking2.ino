@@ -45,7 +45,7 @@ int sleepcycles = 7;  // every sleepcycle will last 8 secs, total sleeptime will
 float distance = 0;
 bool joined = false;
 bool sleeping = false;
-const int pwPin1 = 9;
+const int pwPin1 = 12;
 #define LedPin 2     // pin 13 LED is not used, because it is connected to the SPI port
 #define MAX_DISTANCE 450
 
@@ -191,7 +191,8 @@ void do_send(osjob_t* j) {
   byte buffer[2];
   float distance;
   uint8_t d_value;
-  distance = modeFunc();
+  distance = read_sensor();
+  /*
   if (distance >= 200) {
     const char* message = "Empty";
     int framelength = strlen(message);
@@ -200,6 +201,7 @@ void do_send(osjob_t* j) {
     }
     int result = LMIC_setTxData2(1, LMIC.frame, framelength, 0);
   }
+  */
 
   Serial.print("Distance: ");
   Serial.println(distance);
@@ -226,6 +228,33 @@ static void initfunc (osjob_t* j) {
   // start joining
   LMIC_startJoining();
   // init done - onEvent() callback will be invoked...
+}
+
+void averageFunc() {
+  float averageInches = 0;
+  int averageFeet = 0;
+  float finalInches = 0;
+  float sum = 0;
+  for(int i = 0; i < MAX_NUM; ++i) {
+    sum += arr[i];
+  }
+  averageInches = sum / MAX_NUM;
+  averageFeet = averageInches / 12;
+  finalInches = fmod(averageInches, 12.0);
+  Serial.print("Average - feet ");
+  Serial.print(' ');
+  Serial.print(averageFeet);
+  Serial.print(' ');
+  Serial.print("Average - inches ");
+  Serial.println(finalInches);
+  Serial.print("Total Average Inches: ");
+  Serial.println(averageInches); 
+  if(averageFeet < 8) {
+    Serial.println("Car is here");
+  }
+  else {
+    Serial.println("Car is not here");
+  }
 }
 
 static const byte SLEEPCMD[19] = {
@@ -267,12 +296,21 @@ void sleep() {
     Serial1.read();
   }
 }
-void read_sensor() {
+float read_sensor() {
   pulse1 = pulseIn(pwPin1, HIGH); //inches
   sensor1 = pulse1 / 147; //total inches
   feet = sensor1 / 12;
-  arr[current_num] = sensor1;
-  current_num++;
+  //arr[current_num] = sensor1;
+  //current_num++;
+
+  return sensor1;   
+}
+
+void printAll() {
+  Serial.print("total inches-");
+  Serial.print(sensor1);
+  Serial.print(" feet - ");
+  Serial.println(feet);
 }
 
 float modeFunc() {
@@ -309,17 +347,23 @@ void setup() {
 
 unsigned long time;
 void loop() {
+   //read_sensor();
+   //averageFunc(); 
+   
+   //Serial.print("Real Distance:");
+   //Serial.println(modeFunc()); 
+   
   // start OTAA JOIN
   if (! joined) {
     os_runloop_once();
     return;
   }
   //wakeup();
+ 
   delay(1600);
   //sleep();
   Serial.println ("3");
-  //lpp.measure_distance(1, 10);
-  //ttn.sendBytes(lpp.getBuffer(), lpp.getSize());
+  //read_sensor(); 
   do_send(&sendjob);
 
   Serial.println("2");
